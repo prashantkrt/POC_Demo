@@ -3,6 +3,7 @@ package com.mylearning.poc.controller;
 import com.mylearning.poc.dto.ImageRequest;
 import com.mylearning.poc.service.AsposePsdGenerator;
 import com.mylearning.poc.service.PsdGeneratorService;
+import com.mylearning.poc.service.PsdGeneratorService2;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,9 @@ public class PsdGeneratorController {
     @Autowired
     private AsposePsdGenerator asposePsdGenerator;
 
+    @Autowired
+    private PsdGeneratorService2 psdGeneratorService2;
+
     @GetMapping("/generatePsd")
     public ResponseEntity<Object> getPsd() {
         try {
@@ -34,7 +38,8 @@ public class PsdGeneratorController {
     public ResponseEntity<String> generatePsd(@RequestBody ImageRequest request) {
         try {
             String outputFilePath = "/Users/prashant/Desktop/test/final_output.psd";
-            psdGeneratorService.downloadAndConvertToPsd(request.getImageUrl(), outputFilePath);
+           // psdGeneratorService.downloadAndConvertToPsd(request.getImageUrl(), outputFilePath);
+            psdGeneratorService2.downloadAndConvertToPsd(request.getImageUrl(), outputFilePath);
         } catch (Exception e) {
             log.error("Exception occurred {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());

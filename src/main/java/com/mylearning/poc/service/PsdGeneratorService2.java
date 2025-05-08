@@ -15,7 +15,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 
 @Service
-public class PsdGeneratorService {
+public class PsdGeneratorService2 {
 
     public void generatePsd() throws IOException {
         String inputImagePath = "/Users/prashant/Desktop/test/test.jpg";      // your input image path
@@ -41,30 +41,37 @@ public class PsdGeneratorService {
 
 
     public String downloadAndConvertToPsd(String imageUrl, String outputPath) throws Exception {
-        // Download the image
+        // Step 1: Download image
         File tempImageFile = File.createTempFile("aspose_image", ".tmp");
         try (InputStream in = Request.get(imageUrl).execute().returnContent().asStream();
              FileOutputStream out = new FileOutputStream(tempImageFile)) {
             in.transferTo(out);
         }
 
-        // Load downloaded image using Aspose
-        Image inputImage = Image.load(tempImageFile.getAbsolutePath());
+        // Step 2: Load and cast image safely
+        Image loadedImage = Image.load(tempImageFile.getAbsolutePath());
+        if (!(loadedImage instanceof RasterImage)) {
+            throw new IllegalArgumentException("Downloaded image is not a valid raster image.");
+        }
+        RasterImage rasterImage = (RasterImage) loadedImage;
 
-        // Create PSD with the same size
-        try (PsdImage psdImage = new PsdImage(inputImage.getWidth(), inputImage.getHeight())) {
-            Layer imageLayer = new Layer((RasterImage) inputImage);
+        // Cache the image if needed (some formats require this before use)
+        if (!rasterImage.isCached()) {
+            rasterImage.cacheData();
+        }
+
+        // Step 3: Create and write PSD
+        try (PsdImage psdImage = new PsdImage(rasterImage.getWidth(), rasterImage.getHeight())) {
+            Layer imageLayer = new Layer(rasterImage);
             psdImage.addLayer(imageLayer);
-
-            // Save PSD file
             psdImage.save(outputPath, new PsdOptions());
         }
 
-        // Delete temp image
+        // Step 4: Cleanup
+        loadedImage.dispose();
         Files.deleteIfExists(tempImageFile.toPath());
 
         return outputPath;
     }
-
 
 }
