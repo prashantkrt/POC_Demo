@@ -1,4 +1,4 @@
-package com.mylearning.poc.service;
+package com.mylearning.poc.service.demo;
 
 import com.aspose.psd.Image;
 import com.aspose.psd.RasterImage;
@@ -8,6 +8,7 @@ import com.aspose.psd.imageoptions.PsdOptions;
 import com.mylearning.poc.exception.PsdGenerationException;
 import org.apache.hc.client5.http.fluent.Request;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -17,6 +18,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 
 @Service
+@Profile("demo")
 public class PsdGeneratorGlobalService {
 
     @Value("${input.file.path:/Users/prashant/Desktop/test/test.jpg}")

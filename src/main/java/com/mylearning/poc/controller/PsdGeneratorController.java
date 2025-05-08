@@ -2,12 +2,13 @@ package com.mylearning.poc.controller;
 
 import com.mylearning.poc.dto.ImageRequest;
 import com.mylearning.poc.exception.PsdGenerationException;
-import com.mylearning.poc.service.AsposePsdGenerator;
-import com.mylearning.poc.service.LocalFontPsdGeneratorService;
-import com.mylearning.poc.service.PsdGeneratorService;
+import com.mylearning.poc.service.demo.AsposePsdGenerator;
+import com.mylearning.poc.service.demo.LocalFontPsdGeneratorService;
+import com.mylearning.poc.service.demo.PsdGeneratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/psd")
 @Slf4j
+@Profile("demo")
 public class PsdGeneratorController {
 
     @Autowired
@@ -27,6 +29,7 @@ public class PsdGeneratorController {
 
     @Autowired
     private LocalFontPsdGeneratorService localFontPsdGeneratorService;
+
 
     @Value("${output.file.path:/Users/prashant/Desktop/test/final_output.psd}")
     private String outputFilePath;
@@ -50,7 +53,6 @@ public class PsdGeneratorController {
         log.info("Internal PSD generated successfully.");
         return ResponseEntity.accepted().body("PSD generated successfully.");
     }
-
 
     /**
      * Generates a PSD file from a public image URL sent in the request.
