@@ -43,35 +43,37 @@ public class PsdGeneratorService2 {
     public String downloadAndConvertToPsd(String imageUrl, String outputPath) throws Exception {
         // Step 1: Download image
         File tempImageFile = File.createTempFile("aspose_image", ".tmp");
+        RasterImage rasterImage = null;
+
         try (InputStream in = Request.get(imageUrl).execute().returnContent().asStream();
              FileOutputStream out = new FileOutputStream(tempImageFile)) {
             in.transferTo(out);
         }
 
-        // Step 2: Load and cast image safely
-        Image loadedImage = Image.load(tempImageFile.getAbsolutePath());
-        if (!(loadedImage instanceof RasterImage)) {
-            throw new IllegalArgumentException("Downloaded image is not a valid raster image.");
-        }
-        RasterImage rasterImage = (RasterImage) loadedImage;
+        try {
+            Image loadedImage = Image.load(tempImageFile.getAbsolutePath());
+            if (!(loadedImage instanceof RasterImage)) {
+                loadedImage.dispose(); // make sure to release even if invalid
+                throw new IllegalArgumentException("Downloaded image is not a valid raster image.");
+            }
+            rasterImage = (RasterImage) loadedImage;
 
-        // Cache the image if needed (some formats require this before use)
-        if (!rasterImage.isCached()) {
-            rasterImage.cacheData();
-        }
+            if (!rasterImage.isCached()) {
+                rasterImage.cacheData();
+            }
 
-        // Step 3: Create and write PSD
-        try (PsdImage psdImage = new PsdImage(rasterImage.getWidth(), rasterImage.getHeight())) {
-            Layer imageLayer = new Layer(rasterImage);
-            psdImage.addLayer(imageLayer);
-            psdImage.save(outputPath, new PsdOptions());
+            try (PsdImage psdImage = new PsdImage(rasterImage.getWidth(), rasterImage.getHeight())) {
+                Layer imageLayer = new Layer(rasterImage);
+                psdImage.addLayer(imageLayer);
+                psdImage.save(outputPath, new PsdOptions());
+            }
+        } finally {
+            if (rasterImage != null) {
+                rasterImage.dispose(); // important: release file handle
+            }
+            Files.deleteIfExists(tempImageFile.toPath()); // delete only after dispose
         }
-
-        // Step 4: Cleanup
-        loadedImage.dispose();
-        Files.deleteIfExists(tempImageFile.toPath());
 
         return outputPath;
     }
-
 }
