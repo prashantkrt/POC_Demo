@@ -55,7 +55,7 @@ public class AsposePsdGenerator {
             psdImage.addLayer(logoLayer);
 
             // Add editable text layer
-            Rectangle textBounds = new Rectangle(100, 400, 600, 100);
+            Rectangle textBounds = new Rectangle(0, 0, psdImage.getWidth(), psdImage.getHeight());
             TextLayer textLayer = psdImage.addTextLayer(headerText, textBounds);
 
             // Style the text
