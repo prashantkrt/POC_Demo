@@ -1,16 +1,18 @@
 package com.mylearning.poc.controller;
 
 import com.mylearning.poc.dto.ImageRequest;
+import com.mylearning.poc.exception.PsdGenerationException;
 import com.mylearning.poc.service.AsposePsdGenerator;
 import com.mylearning.poc.service.LocalFontPsdGeneratorService;
 import com.mylearning.poc.service.PsdGeneratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/psd")
@@ -30,20 +32,25 @@ public class PsdGeneratorController {
     private String outputFilePath;
 
     /**
-     * Quick test to trigger PSD generation using internal setup.
+     * Triggers internal PSD generation using a preconfigured setup.
      *
-     * @return HTTP 202 Accepted on success, 400 Bad Request on failure
+     * @return HTTP 202 Accepted on success
      */
     @GetMapping("/generate-internal")
-    public ResponseEntity<String> generateInternalPsd() {
+    public ResponseEntity<String> generateInternalPsd() throws IOException {
+        log.info("Internal PSD generation request received.");
+
         try {
             psdGeneratorService.generatePsd();
-            return ResponseEntity.accepted().body("PSD generated successfully.");
-        } catch (Exception e) {
-            log.error("Exception during internal PSD generation: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Failed to generate PSD internally.");
+        } catch (PsdGenerationException e) {
+            log.error("Error during internal PSD generation: {}", e.getMessage(), e);
+            throw e; // Let global exception handler return proper 500 response
         }
+
+        log.info("Internal PSD generated successfully.");
+        return ResponseEntity.accepted().body("PSD generated successfully.");
     }
+
 
     /**
      * Generates a PSD file from a public image URL sent in the request.
@@ -57,32 +64,38 @@ public class PsdGeneratorController {
      * }
      */
     @PostMapping("/generate-from-url")
-    public ResponseEntity<String> generatePsdFromUrl(@Validated @RequestBody ImageRequest request) {
+    public ResponseEntity<String> generatePsdFromUrl(@Validated @RequestBody ImageRequest request) throws Exception {
+        log.info("Received PSD generation request for image: {}", request.getImageUrl());
+
         try {
-            log.info("Received PSD generation request for image: {}", request.getImageUrl());
             psdGeneratorService.downloadAndConvertToPsd(request.getImageUrl(), outputFilePath);
-            log.info(" PSD created successfully at: {}", outputFilePath);
-            return ResponseEntity.accepted().body("PSD generation successful.");
-        } catch (Exception e) {
-            log.error(" Error during PSD generation from URL: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate PSD: " + e.getMessage());
+        } catch (PsdGenerationException e) {
+            log.error("Error generating PSD for URL {}: {}", request.getImageUrl(), e.getMessage(), e);
+            throw e; // rethrow so global handler can handle it
         }
+
+        log.info("PSD created successfully at: {}", outputFilePath);
+        return ResponseEntity.accepted().body("PSD generation successful.");
     }
 
     /**
      * Triggers the alternate Aspose PSD generation method (e.g., with layered editing).
      *
-     * @return HTTP 202 Accepted on success, 400 on failure
+     * @return HTTP 202 Accepted on success
      */
     @GetMapping("/generate-aspose")
-    public ResponseEntity<String> generateWithAspose() {
+    public ResponseEntity<String> generateWithAspose() throws Exception {
+        log.info("Aspose PSD generation request received.");
+
         try {
             asposePsdGenerator.generatePsd();
-            return ResponseEntity.accepted().body(" PSD generated via Aspose pipeline.");
-        } catch (Exception e) {
-            log.error("Exception in Aspose PSD generation: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Aspose PSD generation failed: " + e.getMessage());
+        } catch (PsdGenerationException e) {
+            log.error("Error during Aspose PSD generation: {}", e.getMessage(), e);
+            throw e;
         }
+
+        log.info("PSD successfully generated via Aspose pipeline.");
+        return ResponseEntity.accepted().body("PSD generated via Aspose pipeline.");
     }
 
 
@@ -91,18 +104,21 @@ public class PsdGeneratorController {
      * <p>
      * This method internally calls {@code localFontPsdGeneratorService.generatePsd()}.
      *
-     * @return HTTP 202 Accepted if successful, or 400 Bad Request on failure.
+     * @return HTTP 202 Accepted if successful
      */
     @GetMapping("/generate/psd-local-font")
-    public ResponseEntity<String> generatePsdUsingLocalFont() {
+    public ResponseEntity<String> generatePsdUsingLocalFont() throws Exception {
+        log.info("Local font PSD generation request received.");
+
         try {
             localFontPsdGeneratorService.generatePsd();
-            log.info("PSD generated successfully via Aspose pipeline.");
-            return ResponseEntity.accepted().body("PSD generated via Aspose pipeline.");
-        } catch (Exception e) {
-            log.error("Exception in Aspose PSD generation: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Aspose PSD generation failed: " + e.getMessage());
+        } catch (PsdGenerationException e) {
+            log.error("Error during local font PSD generation: {}", e.getMessage(), e);
+            throw e; // Delegates to global handler
         }
+
+        log.info("PSD generated successfully via local font + Aspose pipeline.");
+        return ResponseEntity.accepted().body("PSD generated via Aspose pipeline.");
     }
 
 }

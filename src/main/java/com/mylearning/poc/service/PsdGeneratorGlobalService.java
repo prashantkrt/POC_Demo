@@ -5,6 +5,7 @@ import com.aspose.psd.RasterImage;
 import com.aspose.psd.fileformats.psd.PsdImage;
 import com.aspose.psd.fileformats.psd.layers.Layer;
 import com.aspose.psd.imageoptions.PsdOptions;
+import com.mylearning.poc.exception.PsdGenerationException;
 import org.apache.hc.client5.http.fluent.Request;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -58,7 +59,7 @@ public class PsdGeneratorGlobalService {
             Image loadedImage = Image.load(tempImageFile.getAbsolutePath());
             if (!(loadedImage instanceof RasterImage)) {
                 loadedImage.dispose(); // make sure to release even if invalid
-                throw new IllegalArgumentException("Downloaded image is not a valid raster image.");
+                throw new PsdGenerationException("Downloaded image is not a valid raster image.");
             }
             rasterImage = (RasterImage) loadedImage;
 
