@@ -2,8 +2,8 @@ package com.mylearning.poc.service;
 
 import com.aspose.psd.Color;
 import com.aspose.psd.Image;
-import com.aspose.psd.Rectangle;
 import com.aspose.psd.RasterImage;
+import com.aspose.psd.Rectangle;
 import com.aspose.psd.fileformats.psd.PsdImage;
 import com.aspose.psd.fileformats.psd.layers.Layer;
 import com.aspose.psd.fileformats.psd.layers.TextLayer;
@@ -19,30 +19,42 @@ import java.io.InputStream;
 import java.nio.file.Files;
 
 @Service
-public class AsposePsdGenerator {
+public class LocalFontPsdGeneratorService {
 
     public void generatePsd() throws Exception {
         String imageUrl = "https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg";
         String logoUrl = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
         String headerText = "Hello from Aspose!";
         int fontSize = 36;
-        String fontName = "Arial";  // Must be installed on your machine
-        String outputPath = "/Users/prashant/Desktop/test/final_output.psd";
+        String fontPath = "/Users/prashant/Desktop/test/fontawesome-webfont.ttf";  // Must be installed on your machine
+        String outputPath = "/Users/prashant/Desktop/test/final_font_output.psd";
 
-        new AsposePsdGenerator().downloadAndCreatePsd(imageUrl, logoUrl, headerText, fontName, fontSize, outputPath);
+        new AsposePsdGenerator().downloadAndCreatePsd(imageUrl, logoUrl, headerText, fontPath, fontSize, outputPath);
         System.out.println("PSD created at: " + outputPath);
     }
 
-    public void downloadAndCreatePsd(String imageUrl, String logoUrl, String headerText, String fontName, int fontSize, String outputPath) throws Exception {
+    public void downloadAndCreatePsd(String imageUrl, String logoUrl, String headerText,
+                                     String fontPath, int fontSize, String outputPath) throws Exception {
 
         File bgImageFile = downloadFile(imageUrl, ".jpg");
         File logoFile = downloadFile(logoUrl, ".png");
+        File fontFile = new File(fontPath);
+
+        if (!fontFile.exists()) {
+            throw new IllegalArgumentException("Font file does not exist: " + fontPath);
+        }
+
+        // 1. Register local font folder
+        String fontDir = fontFile.getParent();
+        com.aspose.psd.FontSettings.setFontsFolder(fontDir);
+
+        // 2. Extract font name (e.g., "Montserrat-Regular.ttf" -> "Montserrat")
+        String fontName = extractFontName(fontFile.getName());
 
         RasterImage bgImage = null;
         RasterImage logo = null;
 
         try {
-
             bgImage = (RasterImage) Image.load(bgImageFile.getAbsolutePath());
             logo = (RasterImage) Image.load(logoFile.getAbsolutePath());
 
@@ -67,7 +79,7 @@ public class AsposePsdGenerator {
                 if (portions.length > 0) {
                     ITextStyle style = portions[0].getStyle();
                     style.setFontSize(fontSize);
-                    style.setFontName(fontName); // Ensure this font is installed on the OS
+                    style.setFontName(fontName); // Now uses extracted font name
                     style.setFillColor(Color.getBlack());
                 }
 
@@ -77,17 +89,16 @@ public class AsposePsdGenerator {
                 psdImage.save(outputPath, new PsdOptions());
             }
         } finally {
+            if (bgImage != null) bgImage.dispose();
+            if (logo != null) logo.dispose();
 
-            if (bgImage != null) {
-                bgImage.dispose();
-            }
-            if (logo != null) {
-                logo.dispose();
-            }
-            // Cleanup
             Files.deleteIfExists(bgImageFile.toPath());
             Files.deleteIfExists(logoFile.toPath());
         }
+    }
+
+    private String extractFontName(String fontFileName) {
+        return fontFileName.replace(".ttf", "").split("-")[0].trim();
     }
 
     private File downloadFile(String url, String extension) throws Exception {

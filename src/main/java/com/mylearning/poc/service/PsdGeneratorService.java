@@ -6,6 +6,7 @@ import com.aspose.psd.fileformats.psd.PsdImage;
 import com.aspose.psd.fileformats.psd.layers.Layer;
 import com.aspose.psd.imageoptions.PsdOptions;
 import org.apache.hc.client5.http.fluent.Request;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -16,6 +17,12 @@ import java.nio.file.Files;
 
 @Service
 public class PsdGeneratorService {
+
+    @Value("${input.file.path}")
+    private String inputFilePath = "/Users/prashant/Desktop/test/test.jpg";
+
+    @Value("${output.file.path}")
+    private String outputFilePath = "/Users/prashant/Desktop/test/output.psd";
 
     public void generatePsd() throws IOException {
         String inputImagePath = "/Users/prashant/Desktop/test/test.jpg";      // your input image path
