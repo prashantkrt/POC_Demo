@@ -22,31 +22,29 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.UUID;
 
 @Service
 @Profile("prod")
-class generatePsdFromGooglePsd implements AsposePsd{
+class generatePsdFromGooglePsd implements AsposePsd {
 
     @Value("${psd.output.base-path:/Users/prashant/Desktop/test/}")
     private String outputBasePath;
 
     @Override
     public PsdGenerationResponse generatePsdFromInput(PsdGenerationRequest req) throws Exception {
-
         String fileBase = UUID.randomUUID().toString().split("-")[0];
         String outputPsd = outputBasePath + fileBase + ".psd";
         String outputPng = outputBasePath + fileBase + ".png";
         String outputJpg = outputBasePath + fileBase + ".jpg";
 
         generatePsdFromGoogleUrl(
-                req.getImageUrl(),
-                req.getLogoUrl(),
+                req.getImageUrl(),   // PSD input signed URL
+                req.getLogoUrl(),    // logo input signed URL
                 req.getHeaderText(),
-                req.getFontUrl(),
+                req.getFontUrl(),    // font input signed URL
                 req.getFontSize(),
                 outputPsd
         );
@@ -54,22 +52,16 @@ class generatePsdFromGooglePsd implements AsposePsd{
         return new PsdGenerationResponse(true, outputPsd, outputPng, outputJpg);
     }
 
-
     private void generatePsdFromGoogleUrl(String psdUrl, String logoUrl, String headerText,
-                                          String fontPath, int fontSize, String outputBasePath) throws Exception {
+                                          String fontUrl, int fontSize, String outputBasePath) throws Exception {
 
         File psdFile = downloadFile(psdUrl);
         File logoFile = downloadFile(logoUrl);
-        File fontFile = new File(fontPath);
+        File fontFile = downloadFile(fontUrl); // downloaded font via signed URL
 
-        if (!fontFile.exists()) {
-            throw new IllegalArgumentException("Font file not found: " + fontPath);
-        }
-
-        // Register font
+        // Register font from downloaded font file
         FontSettings.setFontsFolder(fontFile.getParent());
 
-        // Extract font name
         String fontName = extractFontName(fontFile);
         System.out.println("Extracted Font Name: " + fontName);
 
@@ -100,21 +92,17 @@ class generatePsdFromGooglePsd implements AsposePsd{
 
             textLayer.getTextData().updateLayerData();
 
-            // Create output files
-            String fileBase = UUID.randomUUID().toString().substring(0, 8);
-            String outputPsd = outputBasePath + fileBase + ".psd";
-            String outputPng = outputBasePath + fileBase + ".png";
-            String outputJpg = outputBasePath + fileBase + ".jpg";
-
-            psdImage.save(outputPsd, new PsdOptions());
-            psdImage.save(outputPng, new com.aspose.psd.imageoptions.PngOptions());
-            psdImage.save(outputJpg, new com.aspose.psd.imageoptions.JpegOptions());
+            // Save final outputs
+            psdImage.save(outputBasePath, new PsdOptions());
+            psdImage.save(outputBasePath.replace(".psd", ".png"), new com.aspose.psd.imageoptions.PngOptions());
+            psdImage.save(outputBasePath.replace(".psd", ".jpg"), new com.aspose.psd.imageoptions.JpegOptions());
 
         } finally {
             if (logo != null) logo.dispose();
             if (psdImage != null) psdImage.dispose();
             Files.deleteIfExists(psdFile.toPath());
             Files.deleteIfExists(logoFile.toPath());
+            Files.deleteIfExists(fontFile.toPath());
         }
     }
 
@@ -131,16 +119,16 @@ class generatePsdFromGooglePsd implements AsposePsd{
     private String getExtensionFromUrl(String url) {
         try {
             String ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-            if (ext.matches("\\.(jpg|jpeg|png|gif|bmp|webp)")) {
+            if (ext.matches("\\.(jpg|jpeg|png|gif|bmp|webp|ttf|psd)")) {
                 return ext;
             }
         } catch (Exception e) {
-            throw new PsdGenerationException("Invalid image URL: " + url, e);
+            throw new PsdGenerationException("Invalid file URL: " + url, e);
         }
-        return ".img";
+        return ".tmp";
     }
 
-    private String extractFontName(File fontFile) throws IOException {
+    private String extractFontName(File fontFile) throws Exception {
         TTFParser parser = new TTFParser();
         try (TrueTypeFont ttf = parser.parse(fontFile)) {
             return ttf.getName();
