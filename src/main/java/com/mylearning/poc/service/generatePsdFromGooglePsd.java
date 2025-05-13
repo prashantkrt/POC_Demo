@@ -17,7 +17,6 @@ import org.apache.fontbox.ttf.TTFParser;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.hc.client5.http.fluent.Request;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -30,12 +29,10 @@ import java.util.UUID;
 
 @Service
 @Profile("prod")
-@Primary
-public class CustomFontService implements AsposePsd {
+class generatePsdFromGooglePsd implements AsposePsd{
 
     @Value("${psd.output.base-path:/Users/prashant/Desktop/test/}")
     private String outputBasePath;
-
 
     @Override
     public PsdGenerationResponse generatePsdFromInput(PsdGenerationRequest req) throws Exception {
@@ -45,7 +42,7 @@ public class CustomFontService implements AsposePsd {
         String outputPng = outputBasePath + fileBase + ".png";
         String outputJpg = outputBasePath + fileBase + ".jpg";
 
-        generatePsdUsingLocalFont(
+        generatePsdFromGoogleUrl(
                 req.getImageUrl(),
                 req.getLogoUrl(),
                 req.getHeaderText(),
@@ -57,10 +54,11 @@ public class CustomFontService implements AsposePsd {
         return new PsdGenerationResponse(true, outputPsd, outputPng, outputJpg);
     }
 
-    private void generatePsdUsingLocalFont(String imageUrl, String logoUrl, String headerText,
-                                           String fontPath, int fontSize, String outputPath) throws Exception {
 
-        File bgImageFile = downloadFile(imageUrl);
+    private void generatePsdFromGoogleUrl(String psdUrl, String logoUrl, String headerText,
+                                          String fontPath, int fontSize, String outputBasePath) throws Exception {
+
+        File psdFile = downloadFile(psdUrl);
         File logoFile = downloadFile(logoUrl);
         File fontFile = new File(fontPath);
 
@@ -68,55 +66,54 @@ public class CustomFontService implements AsposePsd {
             throw new IllegalArgumentException("Font file not found: " + fontPath);
         }
 
-        // Register font folder with Aspose
+        // Register font
         FontSettings.setFontsFolder(fontFile.getParent());
-        //System.out.println("Aspose Registered Fonts: " + Arrays.toString(FontSettings.getFontsNames()));
 
-        // Extract font name from the actual file using FontBox
+        // Extract font name
         String fontName = extractFontName(fontFile);
         System.out.println("Extracted Font Name: " + fontName);
 
-        RasterImage bgImage = null;
         RasterImage logo = null;
+        PsdImage psdImage = null;
 
         try {
-            bgImage = (RasterImage) Image.load(bgImageFile.getAbsolutePath());
+            psdImage = (PsdImage) Image.load(psdFile.getAbsolutePath());
             logo = (RasterImage) Image.load(logoFile.getAbsolutePath());
 
-            try (PsdImage psdImage = new PsdImage(bgImage.getWidth(), bgImage.getHeight())) {
-                // Add background layer
-                psdImage.addLayer(new Layer(bgImage));
+            // Add logo layer
+            Layer logoLayer = new Layer(logo);
+            logoLayer.setLeft(30);
+            logoLayer.setTop(30);
+            psdImage.addLayer(logoLayer);
 
-                // Add logo layer
-                Layer logoLayer = new Layer(logo);
-                logoLayer.setLeft(30);
-                logoLayer.setTop(30);
-                psdImage.addLayer(logoLayer);
+            // Add text layer
+            Rectangle textBounds = new Rectangle(0, 0, psdImage.getWidth(), psdImage.getHeight());
+            TextLayer textLayer = psdImage.addTextLayer(headerText, textBounds);
 
-                // Add text layer
-                Rectangle textBounds = new Rectangle(0, 0, psdImage.getWidth(), psdImage.getHeight());
-                TextLayer textLayer = psdImage.addTextLayer(headerText, textBounds);
-
-                ITextPortion[] portions = textLayer.getTextData().getItems();
-                if (portions.length > 0) {
-                    ITextStyle style = portions[0].getStyle();
-                    style.setFontSize(fontSize);
-                    style.setFontName(fontName); // Use actual font name
-                    style.setFillColor(com.aspose.psd.Color.getBlack());
-                }
-
-                textLayer.getTextData().updateLayerData();
-
-                // Save PSD, PNG, JPG
-                psdImage.save(outputPath, new PsdOptions());
-                psdImage.save(outputPath.replace(".psd", ".png"), new com.aspose.psd.imageoptions.PngOptions());
-                psdImage.save(outputPath.replace(".psd", ".jpg"), new com.aspose.psd.imageoptions.JpegOptions());
+            ITextPortion[] portions = textLayer.getTextData().getItems();
+            if (portions.length > 0) {
+                ITextStyle style = portions[0].getStyle();
+                style.setFontSize(fontSize);
+                style.setFontName(fontName);
+                style.setFillColor(com.aspose.psd.Color.getBlack());
             }
 
+            textLayer.getTextData().updateLayerData();
+
+            // Create output files
+            String fileBase = UUID.randomUUID().toString().substring(0, 8);
+            String outputPsd = outputBasePath + fileBase + ".psd";
+            String outputPng = outputBasePath + fileBase + ".png";
+            String outputJpg = outputBasePath + fileBase + ".jpg";
+
+            psdImage.save(outputPsd, new PsdOptions());
+            psdImage.save(outputPng, new com.aspose.psd.imageoptions.PngOptions());
+            psdImage.save(outputJpg, new com.aspose.psd.imageoptions.JpegOptions());
+
         } finally {
-            if (bgImage != null) bgImage.dispose();
             if (logo != null) logo.dispose();
-            Files.deleteIfExists(bgImageFile.toPath());
+            if (psdImage != null) psdImage.dispose();
+            Files.deleteIfExists(psdFile.toPath());
             Files.deleteIfExists(logoFile.toPath());
         }
     }

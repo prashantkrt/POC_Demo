@@ -6,6 +6,7 @@ import com.mylearning.poc.dto.PsdGenerationResponse;
 import com.mylearning.poc.exception.PsdGenerationException;
 import com.mylearning.poc.service.AsposePsd;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class AsposePsdController {
 
+    @Qualifier("customAsposePsd")
     private final AsposePsd psdService;
 
     public AsposePsdController(AsposePsd psdService) {
