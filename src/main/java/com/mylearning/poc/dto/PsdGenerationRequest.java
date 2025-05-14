@@ -1,27 +1,26 @@
 package com.mylearning.poc.dto;
 
-import com.mylearning.poc.validations.ValidImageUrl;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.validator.constraints.URL;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 public class PsdGenerationRequest {
 
-    @ValidImageUrl
+    // @ValidImageUrl
+    @URL(message = "Image URL must be a valid URL.")
     @NotBlank(message = "Image URL must not be blank.")
-    private String imageUrl;
-
-    @NotBlank(message = "Logo URL must not be blank.")
-    private String logoUrl;
+    private String psdUrl;
 
     @NotBlank(message = "Header text must not be blank.")
     private String headerText;
 
+    @URL(message = "Font URL must be a valid URL.")
     @NotBlank(message = "Font path/url must not be blank.")
     private String fontUrl; // provide the font local path
 
@@ -30,4 +29,5 @@ public class PsdGenerationRequest {
 
     @NotBlank(message = "Template ID must not be blank.")
     private String templateId;
+    
 }

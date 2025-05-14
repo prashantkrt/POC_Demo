@@ -2,10 +2,8 @@ package com.mylearning.poc.service;
 
 import com.aspose.psd.FontSettings;
 import com.aspose.psd.Image;
-import com.aspose.psd.RasterImage;
 import com.aspose.psd.Rectangle;
 import com.aspose.psd.fileformats.psd.PsdImage;
-import com.aspose.psd.fileformats.psd.layers.Layer;
 import com.aspose.psd.fileformats.psd.layers.TextLayer;
 import com.aspose.psd.fileformats.psd.layers.text.ITextPortion;
 import com.aspose.psd.fileformats.psd.layers.text.ITextStyle;
@@ -17,6 +15,7 @@ import org.apache.fontbox.ttf.TTFParser;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.hc.client5.http.fluent.Request;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +27,8 @@ import java.util.UUID;
 
 @Service
 @Profile("prod")
-class generatePsdFromGooglePsd implements AsposePsd {
+@Primary
+class GeneratePsdFromGooglePsd implements AsposePsd {
 
     @Value("${psd.output.base-path:/Users/prashant/Desktop/test/}")
     private String outputBasePath;
@@ -37,50 +37,36 @@ class generatePsdFromGooglePsd implements AsposePsd {
     public PsdGenerationResponse generatePsdFromInput(PsdGenerationRequest req) throws Exception {
         String fileBase = UUID.randomUUID().toString().split("-")[0];
         String outputPsd = outputBasePath + fileBase + ".psd";
-        String outputPng = outputBasePath + fileBase + ".png";
-        String outputJpg = outputBasePath + fileBase + ".jpg";
 
-        generatePsdFromGoogleUrl(
-                req.getImageUrl(),   // PSD input signed URL
-                req.getLogoUrl(),    // logo input signed URL
+        generatePsdWithTextOnly(
+                req.getPsdUrl(),   // PSD input signed URL
                 req.getHeaderText(),
                 req.getFontUrl(),    // font input signed URL
                 req.getFontSize(),
                 outputPsd
         );
 
-        return new PsdGenerationResponse(true, outputPsd, outputPng, outputJpg);
+        return new PsdGenerationResponse(true, outputPsd, null, null);
     }
 
-    private void generatePsdFromGoogleUrl(String psdUrl, String logoUrl, String headerText,
-                                          String fontUrl, int fontSize, String outputBasePath) throws Exception {
+    private void generatePsdWithTextOnly(String psdUrl, String headerText,
+                                         String fontUrl, int fontSize, String outputPath) throws Exception {
 
         File psdFile = downloadFile(psdUrl);
-        File logoFile = downloadFile(logoUrl);
-        File fontFile = downloadFile(fontUrl); // downloaded font via signed URL
+        File fontFile = downloadFile(fontUrl);
 
-        // Register font from downloaded font file
+        // Register font from downloaded .ttf file
         FontSettings.setFontsFolder(fontFile.getParent());
 
+        // Extract font name
         String fontName = extractFontName(fontFile);
         System.out.println("Extracted Font Name: " + fontName);
 
-        RasterImage logo = null;
-        PsdImage psdImage = null;
-
-        try {
-            psdImage = (PsdImage) Image.load(psdFile.getAbsolutePath());
-            logo = (RasterImage) Image.load(logoFile.getAbsolutePath());
-
-            // Add logo layer
-            Layer logoLayer = new Layer(logo);
-            logoLayer.setLeft(30);
-            logoLayer.setTop(30);
-            psdImage.addLayer(logoLayer);
+        try (PsdImage psdImage = (PsdImage) Image.load(psdFile.getAbsolutePath())) {
 
             // Add text layer
-            Rectangle textBounds = new Rectangle(0, 0, psdImage.getWidth(), psdImage.getHeight());
-            TextLayer textLayer = psdImage.addTextLayer(headerText, textBounds);
+            Rectangle bounds = new Rectangle(0, 0, psdImage.getWidth(), psdImage.getHeight());
+            TextLayer textLayer = psdImage.addTextLayer(headerText, bounds);
 
             ITextPortion[] portions = textLayer.getTextData().getItems();
             if (portions.length > 0) {
@@ -92,16 +78,10 @@ class generatePsdFromGooglePsd implements AsposePsd {
 
             textLayer.getTextData().updateLayerData();
 
-            // Save final outputs
-            psdImage.save(outputBasePath, new PsdOptions());
-            psdImage.save(outputBasePath.replace(".psd", ".png"), new com.aspose.psd.imageoptions.PngOptions());
-            psdImage.save(outputBasePath.replace(".psd", ".jpg"), new com.aspose.psd.imageoptions.JpegOptions());
-
+            // Save only PSD output
+            psdImage.save(outputPath, new PsdOptions());
         } finally {
-            if (logo != null) logo.dispose();
-            if (psdImage != null) psdImage.dispose();
             Files.deleteIfExists(psdFile.toPath());
-            Files.deleteIfExists(logoFile.toPath());
             Files.deleteIfExists(fontFile.toPath());
         }
     }
@@ -119,7 +99,7 @@ class generatePsdFromGooglePsd implements AsposePsd {
     private String getExtensionFromUrl(String url) {
         try {
             String ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-            if (ext.matches("\\.(jpg|jpeg|png|gif|bmp|webp|ttf|psd)")) {
+            if (ext.matches("\\.(psd|ttf)")) {
                 return ext;
             }
         } catch (Exception e) {

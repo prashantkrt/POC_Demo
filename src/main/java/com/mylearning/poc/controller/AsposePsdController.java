@@ -1,12 +1,10 @@
 package com.mylearning.poc.controller;
 
-
 import com.mylearning.poc.dto.PsdGenerationRequest;
 import com.mylearning.poc.dto.PsdGenerationResponse;
 import com.mylearning.poc.exception.PsdGenerationException;
 import com.mylearning.poc.service.AsposePsd;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -21,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class AsposePsdController {
 
-    @Qualifier("customAsposePsd")
+
     private final AsposePsd psdService;
 
     public AsposePsdController(AsposePsd psdService) {
@@ -32,13 +30,13 @@ public class AsposePsdController {
      * Generates a PSD file using provided image, logo, text, and font details.
      *
      * @param request the input containing imageUrl, logoUrl, headerText, fontName, fontSize, and templateId
-     * @return HTTP 202 (Accepted) with PSD generation result; handled by global exception handler on failure
+     * @return HTTP 202 (Accepted) with a PSD generation result; handled by global exception handler on failure
      *
      * <p><b>Example Request Body:</b></p>
      * <pre>
      * {
-     *   "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg",
-     *   "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png",
+     *   "imageUrl": "<a href="https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg">...</a>",
+     *   "logoUrl": "<a href=https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png...</a>",
      *   "headerText": "Hello from Aspose!",
      *   "fontName": "Arial",
      *   "fontSize": 36,
@@ -48,7 +46,7 @@ public class AsposePsdController {
      */
     @PostMapping("/generate/psd-from-input")
     public ResponseEntity<PsdGenerationResponse> generatePsdFromInput(@Validated @RequestBody PsdGenerationRequest request) throws Exception {
-        log.info("Received PSD generation request with image URL: {}", request.getImageUrl());
+        log.info("Received PSD generation request with image URL: {}", request.getPsdUrl());
 
         try {
             PsdGenerationResponse response = psdService.generatePsdFromInput(request);
@@ -57,7 +55,7 @@ public class AsposePsdController {
 
             return ResponseEntity.accepted().body(response);
         } catch (PsdGenerationException e) {
-            log.error("PSD generation failed for image URL: {}", request.getImageUrl(), e);
+            log.error("PSD generation failed for image URL: {}", request.getPsdUrl(), e);
             throw e;
         }
     }
