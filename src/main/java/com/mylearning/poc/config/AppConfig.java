@@ -13,7 +13,27 @@ public class AppConfig {
         return Executors.newFixedThreadPool(10); // tune as needed
     }
 }
-
+//
+//@PostConstruct
+//public void warmUp() {
+//    try {
+//        new com.aspose.psd.License().setLicense(getClass().getClassLoader().getResourceAsStream("Aspose.PSD.Java.lic"));
+//
+//        try (PsdImage dummy = new PsdImage(100, 100);
+//             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+//            dummy.save(out, new PsdOptions());
+//        }
+//
+//        InputStream fontStream = getClass().getClassLoader().getResourceAsStream("warmup-font.ttf");
+//        if (fontStream != null) {
+//            new TTFParser().parse(fontStream).getName();
+//        }
+//
+//        log.info("✅ Aspose warm-up complete.");
+//    } catch (Exception e) {
+//        log.warn("Warm-up failed", e);
+//    }
+//}
 
 //
 //import com.aspose.psd.fileformats.psd.PsdImage;
