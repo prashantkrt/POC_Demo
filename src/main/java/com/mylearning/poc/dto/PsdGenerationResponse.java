@@ -13,14 +13,10 @@ public class PsdGenerationResponse {
     private boolean apiSuccess;
     private LocalDateTime timeStamp;
     private String imagePsd;
-    private String imagePng;
-    private String imageJpg;
 
-    public PsdGenerationResponse(boolean b, String outputPsd, String outputPng, String outputJpg) {
-        this.apiSuccess = b;
+    public PsdGenerationResponse(boolean apiSuccess, String outputPsd) {
+        this.apiSuccess = apiSuccess;
         this.timeStamp = LocalDateTime.now();
         this.imagePsd = outputPsd;
-        this.imagePng = outputPng;
-        this.imageJpg = outputJpg;
     }
 }

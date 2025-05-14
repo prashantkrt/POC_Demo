@@ -11,6 +11,7 @@ import com.aspose.psd.imageoptions.PsdOptions;
 import com.mylearning.poc.dto.PsdGenerationRequest;
 import com.mylearning.poc.dto.PsdGenerationResponse;
 import com.mylearning.poc.exception.PsdGenerationException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fontbox.ttf.TTFParser;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.hc.client5.http.fluent.Request;
@@ -21,14 +22,24 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 @Service
 @Profile("prod")
 @Primary
+@Slf4j
 class GeneratePsdFromGooglePsd implements AsposePsd {
+
+    private final ExecutorService executor;
+
+    GeneratePsdFromGooglePsd(ExecutorService executor) {
+        this.executor = executor;
+    }
 
     @Value("${psd.output.base-path:/Users/prashant/Desktop/test/}")
     private String outputBasePath;
@@ -46,21 +57,45 @@ class GeneratePsdFromGooglePsd implements AsposePsd {
                 outputPsd
         );
 
-        return new PsdGenerationResponse(true, outputPsd, null, null);
+        return new PsdGenerationResponse(true, outputPsd);
     }
 
     private void generatePsdWithTextOnly(String psdUrl, String headerText,
                                          String fontUrl, int fontSize, String outputPath) throws Exception {
 
-        File psdFile = downloadFile(psdUrl);
-        File fontFile = downloadFile(fontUrl);
+        long start = System.currentTimeMillis();
 
-        // Register font from downloaded .ttf file
+        // Parallel download using CompletableFuture
+        CompletableFuture<File> psdFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return downloadFileWithRetry(psdUrl, 3);
+            } catch (Exception e) {
+                throw new PsdGenerationException("Failed to download PSD from URL: " + psdUrl, e);
+            }
+        }, executor);
+
+        CompletableFuture<File> fontFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return downloadFileWithRetry(fontUrl, 3);
+            } catch (Exception e) {
+                throw new PsdGenerationException("Failed to download font from URL: " + fontUrl, e);
+            }
+        }, executor);
+
+        CompletableFuture<Void> combined = CompletableFuture.allOf(psdFuture, fontFuture);
+        combined.get(); // wait until both complete
+
+        File psdFile = psdFuture.join();
+        File fontFile = fontFuture.join();
+
+        // Clean temp files when done
+        psdFuture.whenComplete((file, ex) -> safelyDelete(file));
+        fontFuture.whenComplete((file, ex) -> safelyDelete(file));
+
+        // Register font from a downloaded .ttf file
         FontSettings.setFontsFolder(fontFile.getParent());
-
-        // Extract font name
         String fontName = extractFontName(fontFile);
-        System.out.println("Extracted Font Name: " + fontName);
+        log.info(" Extracted Font Name: {}", fontName);
 
         try (PsdImage psdImage = (PsdImage) Image.load(psdFile.getAbsolutePath())) {
 
@@ -78,12 +113,23 @@ class GeneratePsdFromGooglePsd implements AsposePsd {
 
             textLayer.getTextData().updateLayerData();
 
-            // Save only PSD output
             psdImage.save(outputPath, new PsdOptions());
         } finally {
-            Files.deleteIfExists(psdFile.toPath());
-            Files.deleteIfExists(fontFile.toPath());
+            log.info("PSD generation took {} ms", System.currentTimeMillis() - start);
         }
+    }
+
+    private File downloadFileWithRetry(String url, int attempts) throws Exception {
+        for (int i = 0; i < attempts; i++) {
+            try {
+                return downloadFile(url);
+            } catch (Exception e) {
+                log.warn("Attempt {}/{} failed for URL: {}", (i + 1), attempts, url);
+                if (i == attempts - 1) throw e;
+                Thread.sleep(300);
+            }
+        }
+        throw new IOException("All attempts to download failed for URL: " + url);
     }
 
     private File downloadFile(String url) throws Exception {
@@ -112,6 +158,17 @@ class GeneratePsdFromGooglePsd implements AsposePsd {
         TTFParser parser = new TTFParser();
         try (TrueTypeFont ttf = parser.parse(fontFile)) {
             return ttf.getName();
+        }
+    }
+
+    private void safelyDelete(File file) {
+        try {
+            if (file != null && file.exists()) {
+                Files.deleteIfExists(file.toPath());
+                log.debug("🗑 Temp file deleted: {}", file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to delete temp file: {}", file.getAbsolutePath(), e);
         }
     }
 }

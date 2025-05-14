@@ -6,12 +6,15 @@ import com.mylearning.poc.exception.PsdGenerationException;
 import com.mylearning.poc.service.AsposePsd;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/psd")
@@ -27,35 +30,32 @@ public class AsposePsdController {
     }
 
     /**
-     * Generates a PSD file using provided image, logo, text, and font details.
+     * Generates a new PSD file by downloading a base PSD and a font file from signed URLs,
+     * and applying a new text layer using the provided header text and font size.
      *
-     * @param request the input containing imageUrl, logoUrl, headerText, fontName, fontSize, and templateId
-     * @return HTTP 202 (Accepted) with a PSD generation result; handled by global exception handler on failure
+     * @param request the input containing psdUrl, fontUrl, headerText, and fontSize
+     * @return HTTP 202 (Accepted) with the generated PSD file path
      *
      * <p><b>Example Request Body:</b></p>
      * <pre>
      * {
-     *   "imageUrl": "<a href="https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg">...</a>",
-     *   "logoUrl": "<a href=https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png...</a>",
+     *   "psdUrl": "https://storage.googleapis.com/bucket/original.psd?Expires=...",
+     *   "fontUrl": "https://storage.googleapis.com/bucket/font.ttf?Expires=...",
      *   "headerText": "Hello from Aspose!",
-     *   "fontName": "Arial",
-     *   "fontSize": 36,
-     *   "templateId": "template-001"
+     *   "fontSize": 36
      * }
      * </pre>
      */
     @PostMapping("/generate/psd-from-input")
     public ResponseEntity<PsdGenerationResponse> generatePsdFromInput(@Validated @RequestBody PsdGenerationRequest request) throws Exception {
-        log.info("Received PSD generation request with image URL: {}", request.getPsdUrl());
-
+        String requestId = UUID.randomUUID().toString().split("-")[0];
+        log.info("[{}] ➤ PSD generation started for: {}", requestId, request.getPsdUrl());
         try {
             PsdGenerationResponse response = psdService.generatePsdFromInput(request);
-            log.info("PSD generated successfully. Paths => PSD: {}, PNG: {}, JPG: {}",
-                    response.getImagePsd(), response.getImagePng(), response.getImageJpg());
-
-            return ResponseEntity.accepted().body(response);
+            log.info("[{}] PSD generation completed: {}", requestId, response.getImagePsd());
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (PsdGenerationException e) {
-            log.error("PSD generation failed for image URL: {}", request.getPsdUrl(), e);
+            log.error("PSD generation failed for image URL: requestId: {}, psdUrl: {}", requestId, request.getPsdUrl(), e);
             throw e;
         }
     }
