@@ -13,3 +13,37 @@ public class AppConfig {
         return Executors.newFixedThreadPool(10); // tune as needed
     }
 }
+
+
+//
+//import com.aspose.psd.fileformats.psd.PsdImage;
+//import com.aspose.psd.imageoptions.PsdOptions;
+//import lombok.extern.slf4j.Slf4j;
+//import org.springframework.context.annotation.Configuration;
+//import org.springframework.context.annotation.Profile;
+//
+//import javax.annotation.PostConstruct;
+//import java.io.ByteArrayOutputStream;
+//
+//@Configuration
+//@Profile("prod")
+//@Slf4j
+//public class AsposeWarmUpConfig {
+//
+//    @PostConstruct
+//    public void warmUp() {
+//        try {
+//            log.info("🔧 Warming up Aspose.PSD engine...");
+//            // Create a small in-memory PSD to initialize Aspose internals
+//            try (PsdImage dummy = new PsdImage(100, 100);
+//                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+//
+//                dummy.save(out, new PsdOptions());
+//            }
+//
+//            log.info("✅ Aspose.PSD engine warm-up completed successfully.");
+//        } catch (Exception e) {
+//            log.warn("⚠️ Aspose.PSD warm-up failed: {}", e.getMessage(), e);
+//        }
+//    }
+//}
